@@ -40,7 +40,6 @@ class Simulation( Thread ):
         if ( tradingAllowed and random() <= security.tradeProbability ):                                    
           tradeVolume, tradePrice, emptyOrderBookSide = security.getNextExecutedTrade( direction )          
           if not emptyOrderBookSide:                                                                        
-            #security.logCurrentQuote()                                                                      
             self.message_publisher.sendMessage( 
               "%s.%s" % ( 'Equity', security.market.value.mic ),
               security.getCurrentQuoteJson()
@@ -52,5 +51,4 @@ class Simulation( Thread ):
             "%s.%s" % ( 'Equity', security.market.value.mic ),
             security.getCurrentQuoteJson()
           )
-          #security.logCurrentQuote()                                                                        
       sleep( self.eventFrequencyMs / 1000 )                                                                      

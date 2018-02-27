@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from configparser import ConfigParser
 from decimal import Decimal, getcontext
 from time import sleep
 from random import random, seed
@@ -7,63 +8,44 @@ from enum import Enum, IntEnum
 from sys import exit
 import signal
 import numpy as np
-import json
+
+from Simulation import Simulation
+from SimulationDict import *
 
 from Markets import *
+from FeedMessages import * 
 from SimulationPublisher import messagePublisher
 
-eventFrequencyMs=10
 seed( None )
 
 getcontext().prec=6
 
-message_publisher = messagePublisher( 'rt_feeds' )
+class Configuration( object ):
+  bus_configuration = {}
 
-class messageType( Enum ):
-  quote=1
-  trade=2
-  marketStatus=3
+  def __init__( self ):
+    self.bus_configuration['host'] = 'localhost'
+    self.bus_configuration['port'] = '5672'
+    self.bus_configuration['vhost'] = '/'
+    self.bus_configuration['user'] = 'guest'
+    self.bus_configuration['password'] = 'guest'
 
-def getQuoteMessage( ticker, exchange, bid, bidsz, ask, asksz, qcond=1 ):
-  msg = {}
-  msg[ 'type' ] = messageType.quote.value
-  msg[ 'ticker' ] = ticker
-  msg[ 'exchange' ] = exchange
-  msg[ 'bid' ] = bid
-  msg[ 'bidsz' ] = bidsz
-  msg[ 'ask' ] = ask
-  msg[ 'asksz' ] = asksz
-  msg[ 'qcond' ] = qcond
-  return json.dumps( msg )
-
-# Directionality for price movement
-class Direction( Enum ):
-  UP=1
-  DOWN=2
-
-class LogLevel( IntEnum ):
-  DEBUG=1
-  INFO=2 
-  WARNING=3
-  CRITICAL=4
-
-def publish( assetClass, exchange, message ):
-  message_publisher.sendMessage( "%s.%s" % ( assetClass, exchange ), message )
+  def processConfigurationFile( self, fp ):
+    cfg = ConfigParser() 
+    cfg.readfp( fp )
+    print( cfg.sections() )
+   
+    for opt in cfg.options( 'bus_configuration' ):
+      if opt not in self.bus_configuration.keys():
+        log( 'Unrecognized configuration option %s in section %s' % ( opt, 'bus_configuration' ), LogLevel.WARNING )
+      else:
+        optval = cfg.get( 'bus_configuration', opt )
+        self.bus_configuration[ opt ] = optval
+        log( 'Setting %s.%s=%s' % ( 'bus_configuration', opt, optval ), LogLevel.DEBUG )
 
 def log( message, level=LogLevel.DEBUG, flush=False ):
   if ( level >= LogLevel.DEBUG ):
     print( message, flush=flush )
-
-class HaltStates( object ):
-  def __init__ (self, probability, tradingAllowed=False, quotingAllowed=False):
-    self.probability=probability
-    self.tradingAllowed=tradingAllowed
-    self.quotingAllowed=quotingAllowed
-
-class HaltIndicator( Enum ):
-  NONE=HaltStates( 0.01, tradingAllowed=True, quotingAllowed=True )
-  HALTED=HaltStates( 0.1 )
-  INTRADAY_AUCTION=HaltStates( 0.1, tradingAllowed=False, quotingAllowed=True )
 
 class Security( object ):
   def __init__( self, ticker, tickSizeRange, market, bullishBias=0.50, quoteChangeProbability=0.50, tradeProbability=0.15, initBid=Decimal('10.00'), typicalTradeSize=1000, boardLotSize=1, boardLotDistributionForTrades=100, typicalAggregateOrderSize=2500, boardLotDistributionForOrders=500  ):
@@ -141,22 +123,21 @@ class Security( object ):
     # TODO: auction prints should be much larger than regular trade prints.
     return self.getNextExecutedTrade( direction )
 
-  def logCurrentQuote( self ):
-    #etQuoteMessage( ticker, exchange, bid, bidsz, ask, asksz, qcond=1 ):
+  def getCurrentQuoteJson( self ):
     log( "quoting %s at $%s x %s / $%s x %s" % ( self.ticker, self.bid, self.bidSize, self.ask, self.askSize ), LogLevel.DEBUG )
-    publish( assetClass='Equity',
-      exchange = self.market.value.mic,
-      message = getQuoteMessage( self.ticker, self.market.value.mic, str( self.bid ), self.bidSize, str( self.ask ), self.askSize )
-    )
+    return createJsonQuoteMessage( self.ticker, self.market.value.mic, str( self.bid ), self.bidSize, str( self.ask ), self.askSize ) 
+
       
 def getTradeSize( security ):
   # mutate the typical trade size by a normally distributed multiple of the board lot.
   boardLotsFromTTS = np.random.randint(-1 * security.boardLotDistributionForTrades, security.boardLotDistributionForTrades)
   return security.typicalTradeSize + boardLotsFromTTS * security.boardLotSize
 
+
 def getAggregateOrderSize( security ):
   boardLotsFromAOS = np.random.randint(-1 * security.boardLotDistributionForOrders, security.boardLotDistributionForOrders)
   return security.typicalAggregateOrderSize + boardLotsFromAOS * security.boardLotSize
+
  
 def getMinimumTickSize( currentPrice, tickSizeRange ):
   # Normally different markets have different minimum tick sizes.
@@ -177,53 +158,33 @@ def getSecurityUniverse( securityMasterFilePath=None ):
 
   return securityUniverse
 
-def runSimulationLoop( securityUniverse ):
-  while( True ):
-    for market in Markets:
-      market.value.checkMarketPhase()
-    for security in securityUniverse.values():
-      # Check whether this security has moved in/out of a halted state
-      if ( security.market.value.currentPhase == MarketPhases.OPEN ):
-        security.checkHaltIndicator()
-
-      # bullish bias dictates the probability of crossing the bid/ask spread in either direction.
-      # bullish bias also dictates the likely direction of any quote change
-      # for sake of sanity, we evaluate direction once and move both events in the same direction.
-      emptyOrderBookSide=False
-      tradingAllowed = security.market.value.currentPhase.value.tradingAllowed and security.haltIndicator.value.tradingAllowed
-      quotingAllowed = security.market.value.currentPhase.value.quotingAllowed and security.haltIndicator.value.quotingAllowed
-      auctionPrint = security.market.value.currentPhase.value.auctionPrint
-
-      if (random() > security.bullishBias ):    
-        direction = Direction.UP
-      else:
-        direction = Direction.DOWN 
-  
-      # Halted stocks won't get an auction print
-      if ( auctionPrint and security.haltIndicator != HaltIndicator.HALTED ):
-        tradeVolume, tradePrice, emptyOrderBookSide = security.getAuctionTrade( direction )
-      if ( tradingAllowed and random() <= security.tradeProbability ):
-        tradeVolume, tradePrice, emptyOrderBookSide = security.getNextExecutedTrade( direction )
-        if not emptyOrderBookSide:
-          security.logCurrentQuote()
-      if ( quotingAllowed and ( emptyOrderBookSide or random() <= security.quoteChangeProbability ) ):
-        security.getNextQuoteLine( direction )
-        security.logCurrentQuote()
-    sleep( eventFrequencyMs / 1000 )
 
 def onExit( signum=None, frame=None ):
   log( "Shutting down simulation", LogLevel.INFO )
-  message_publisher.shutdown()
-  log( "Shutting down message publisher", LogLevel.INFO )
+#  message_publisher.shutdown()
+#  log( "Shutting down message publisher", LogLevel.INFO )
   exit( 0 )
 
 def main():
+  configurationFile='MarketFeedSimulator.cfg'
+  try:
+    fp = open( configurationFile, 'r' )
+    log( "Processing configuration file %s" % ( configurationFile ) )
+  except:
+    log( "Failed to open configuration file %s" % ( configurationFile ) )
+    log( "Aborting!" )
+    exit(1)
+  cfg = Configuration()
+  cfg.processConfigurationFile( fp )
+
   log( "Starting feed simulation", LogLevel.INFO )
   securityUniverse = getSecurityUniverse( securityMasterFilePath=None )
   log( "Loaded Universe of %d securities" % ( len( securityUniverse )  ), LogLevel.INFO)
   signal.signal( signal.SIGINT, onExit )
 
-  runSimulationLoop( securityUniverse )
+  message_publisher = messagePublisher( 'rt_feeds' )
+  simulation = Simulation( securityUniverse, message_publisher )
+  simulation.start()
 
 if __name__ == "__main__":
   main()
