@@ -6,14 +6,19 @@ from time import sleep
 from SimulationDict import *
 
 class Simulation( Thread ):
-  eventFrequencyMs=10
+  eventFrequencyMs = 10
+  runnable = True
+ 
+  def stop( self ):
+    self.runnable = False
+ 
   def __init__( self, securityUniverse, message_publisher ):
     Thread.__init__( self )
     self.securityUniverse = securityUniverse
     self.message_publisher = message_publisher
 
   def run( self ):
-    while( True ):                                                                                                                
+    while( self.runnable ):
       for market in Markets:                                                                                                      
         market.value.checkMarketPhase()                                                                                           
       for security in self.securityUniverse.values():                                                                                  

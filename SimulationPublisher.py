@@ -5,12 +5,17 @@ import json
 import sys
 
 class messagePublisher( object ):
-  def __init__( self, message_bus_exchange='rt_feeds' ):
-    self.connection= pika.BlockingConnection( pika.ConnectionParameters( host='localhost' ) )
+  def __init__( self, cfg ):
+    creds = pika.PlainCredentials( cfg.bus_configuration['user'], cfg.bus_configuration['password'] )
+    self.connection= pika.BlockingConnection( pika.ConnectionParameters( 
+      host = cfg.bus_configuration['host'],
+      port = cfg.bus_configuration['port'],
+      virtual_host = cfg.bus_configuration['vhost'],
+      credentials = creds  ) )
     self.channel = self.connection.channel()
-    self.channel.exchange_declare(exchange=message_bus_exchange,
+    self.channel.exchange_declare(exchange=cfg.bus_configuration['exchange'],
                          exchange_type='topic')
-    self.exchange = message_bus_exchange
+    self.exchange = cfg.bus_configuration['exchange']
     message= json.dumps( { 'ticker' : 'BHP', 'mic' : 'XASX' } )
 
   def sendMessage( self, routing_key, msg ):

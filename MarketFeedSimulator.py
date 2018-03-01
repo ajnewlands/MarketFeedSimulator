@@ -5,7 +5,7 @@ from decimal import Decimal, getcontext
 from time import sleep, strftime
 from random import random, seed
 from enum import Enum, IntEnum 
-from sys import exit
+from sys import exit, stderr
 import signal
 import numpy as np
 
@@ -29,6 +29,7 @@ class Configuration( object ):
     self.bus_configuration['vhost'] = '/'
     self.bus_configuration['user'] = 'guest'
     self.bus_configuration['password'] = 'guest'
+    self.bus_configuration['exchange'] = 'rt_feed'
 
   def processConfigurationFile( self, fp ):
     cfg = ConfigParser() 
@@ -44,7 +45,7 @@ class Configuration( object ):
 
 def log( message, level=LogLevel.DEBUG, flush=False ):
   if ( level >= LogLevel.DEBUG ):
-    print( "%s %s %s" % ( strftime("%Y%m%d %H:%M:%S"), level.name, message ), flush=flush )
+    print( "%s %s %s" % ( strftime("%Y%m%d %H:%M:%S"), level.name, message ), flush=flush, file=stderr )
 
 class Security( object ):
   def __init__( self, ticker, tickSizeRange, market, bullishBias=0.50, quoteChangeProbability=0.50, tradeProbability=0.15, initBid=Decimal('10.00'), typicalTradeSize=1000, boardLotSize=1, boardLotDistributionForTrades=100, typicalAggregateOrderSize=2500, boardLotDistributionForOrders=500  ):
@@ -158,32 +159,44 @@ def getSecurityUniverse( securityMasterFilePath=None ):
   return securityUniverse
 
 
-def onExit( signum=None, frame=None ):
-  log( "Shutting down simulation", LogLevel.INFO )
-#  message_publisher.shutdown()
-#  log( "Shutting down message publisher", LogLevel.INFO )
-  exit( 0 )
 
-def main():
-  configurationFile='MarketFeedSimulator.cfg'
-  try:
-    fp = open( configurationFile, 'r' )
-    log( "Processing configuration file %s" % ( configurationFile ) )
-  except:
-    log( "Failed to open configuration file %s" % ( configurationFile ) )
-    log( "Aborting!" )
-    exit(1)
-  cfg = Configuration()
-  cfg.processConfigurationFile( fp )
 
-  log( "Starting feed simulation", LogLevel.INFO )
-  securityUniverse = getSecurityUniverse( securityMasterFilePath=None )
-  log( "Loaded Universe of %d securities" % ( len( securityUniverse )  ), LogLevel.INFO)
-  signal.signal( signal.SIGINT, onExit )
+class Main( object ):
+  def onExit( self, signum=None, frame=None ):
+    log( "Shutting down simulation", LogLevel.INFO )
+    self.simulation.stop()
+    log( "Shutting down message bus connection", LogLevel.INFO )
+    self.message_publisher.shutdown()
+  
+  def __init__( self ):
+    pass
+ 
+  def main( self ):
+    configurationFile='MarketFeedSimulator.cfg'
+    try:
+      fp = open( configurationFile, 'r' )
+      log( "Processing configuration file %s" % ( configurationFile ) )
+    except:
+      log( "Failed to open configuration file %s" % ( configurationFile ) )
+      log( "Aborting!" )
+      exit(1)
+    cfg = Configuration()
+    cfg.processConfigurationFile( fp )
 
-  message_publisher = messagePublisher( 'rt_feeds' )
-  simulation = Simulation( securityUniverse, message_publisher )
-  simulation.start()
+    log( "Starting feed simulation", LogLevel.INFO )
+    securityUniverse = getSecurityUniverse( securityMasterFilePath=None )
+    log( "Loaded Universe of %d securities" % ( len( securityUniverse )  ), LogLevel.INFO)
+
+    self.message_publisher = messagePublisher( cfg )
+    self.simulation = Simulation( securityUniverse, self.message_publisher )
+    signal.signal( signal.SIGINT, self.onExit )
+  
+    log( "Simulation starting", LogLevel.INFO )
+    self.simulation.start()
+ 
+    self.simulation.join()
+    log( "Simulation ended", LogLevel.INFO )
 
 if __name__ == "__main__":
-  main()
+  m = Main()
+  m.main()
