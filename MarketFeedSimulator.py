@@ -2,7 +2,7 @@
 
 from configparser import ConfigParser
 from decimal import Decimal, getcontext
-from time import sleep
+from time import sleep, strftime
 from random import random, seed
 from enum import Enum, IntEnum 
 from sys import exit
@@ -33,7 +33,6 @@ class Configuration( object ):
   def processConfigurationFile( self, fp ):
     cfg = ConfigParser() 
     cfg.readfp( fp )
-    print( cfg.sections() )
    
     for opt in cfg.options( 'bus_configuration' ):
       if opt not in self.bus_configuration.keys():
@@ -45,7 +44,7 @@ class Configuration( object ):
 
 def log( message, level=LogLevel.DEBUG, flush=False ):
   if ( level >= LogLevel.DEBUG ):
-    print( message, flush=flush )
+    print( "%s %s %s" % ( strftime("%Y%m%d %H:%M:%S"), level.name, message ), flush=flush )
 
 class Security( object ):
   def __init__( self, ticker, tickSizeRange, market, bullishBias=0.50, quoteChangeProbability=0.50, tradeProbability=0.15, initBid=Decimal('10.00'), typicalTradeSize=1000, boardLotSize=1, boardLotDistributionForTrades=100, typicalAggregateOrderSize=2500, boardLotDistributionForOrders=500  ):
