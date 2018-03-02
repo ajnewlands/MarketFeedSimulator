@@ -16,27 +16,30 @@ seed( None )
 getcontext().prec=6
 
 class Configuration( object ):
-  bus_configuration = {}
+  bus = {}
+  universe = {}
 
   def __init__( self ):
-    self.bus_configuration['host'] = 'localhost'
-    self.bus_configuration['port'] = '5672'
-    self.bus_configuration['vhost'] = '/'
-    self.bus_configuration['user'] = 'guest'
-    self.bus_configuration['password'] = 'guest'
-    self.bus_configuration['exchange'] = 'rt_feeds'
+    self.bus['host'] = 'localhost'
+    self.bus['port'] = '5672'
+    self.bus['vhost'] = '/'
+    self.bus['user'] = 'guest'
+    self.bus['password'] = 'guest'
+    self.bus['exchange'] = 'rt_feeds'
+    self.universe['universe_file'] = 'SecurityMaster.dat'
 
   def processConfigurationFile( self, fp ):
     cfg = ConfigParser() 
     cfg.readfp( fp )
    
-    for opt in cfg.options( 'bus_configuration' ):
-      if opt not in self.bus_configuration.keys():
-        log( 'Unrecognized configuration option %s in section %s' % ( opt, 'bus_configuration' ), LogLevel.WARNING )
-      else:
-        optval = cfg.get( 'bus_configuration', opt )
-        self.bus_configuration[ opt ] = optval
-        log( 'Setting %s.%s=%s' % ( 'bus_configuration', opt, optval ), LogLevel.DEBUG )
+    for section, member in [ ('bus_configuration', self.bus ), ('universe', self.universe ) ]:
+      for opt in cfg.options( section ):
+        if opt not in member.keys():
+          log( 'Unrecognized configuration option %s in section %s' % ( opt, section ), LogLevel.WARNING )
+        else:
+          optval = cfg.get( section, opt )
+          member[ opt ] = optval
+          log( 'Setting %s.%s=%s' % ( section, opt, optval ), LogLevel.DEBUG )
 
 def getMinimumTickSize( currentPrice, tickSizeRange ):
   # Normally different markets have different minimum tick sizes.
@@ -45,20 +48,6 @@ def getMinimumTickSize( currentPrice, tickSizeRange ):
   if (tickSizeRange == 2):
     return Decimal('10')
   return Decimal('0.01') 
-
-def getOldSecurityUniverse( securityMasterFilePath=None ):
-  # For now we will use a hard coded security universe, but in the long run we would use a universe file.
-  securityUniverse={}
-  securityUniverse['7974'] = Security( ticker='7974', tickSizeRange=2, market=Markets.XTKS, initBid=Decimal('46400') )
-  securityUniverse['BHP'] = Security( ticker='BHP', tickSizeRange=1, market=Markets.XASX, initBid=Decimal('30.68') )
-  #securityUniverse['WOW'] = Security( ticker='WOW', tickSizeRange=1, market=Markets.XASX, initBid=Decimal('26.92') )
-  #securityUniverse['CBA'] = Security( ticker='CBA', tickSizeRange=1, market=Markets.XASX, initBid=Decimal('75.46') )
-  #securityUniverse['AMP'] = Security( ticker='AMP', tickSizeRange=1, market=Markets.XASX, initBid=Decimal('5.25'), typicalTradeSize=500, boardLotDistributionForTrades=250, typicalAggregateOrderSize=4000, boardLotDistributionForOrders=2000  )
-
-  return securityUniverse
-
-
-
 
 class Main( object ):
   def onExit( self, signum=None, frame=None ):
@@ -83,7 +72,7 @@ class Main( object ):
     cfg.processConfigurationFile( fp )
 
     log( "Starting feed simulation", LogLevel.INFO )
-    securityUniverse = getSecurityUniverse( securityMasterFilePath='SecurityMaster.dat' )
+    securityUniverse = getSecurityUniverse( securityMasterFilePath = cfg.universe['universe_file'] )
     log( "Loaded Universe of %d securities" % ( len( securityUniverse )  ), LogLevel.INFO)
 
     self.message_publisher = messagePublisher( cfg )

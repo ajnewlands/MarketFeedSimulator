@@ -8,6 +8,7 @@ from Logger import log
 from FeedMessages import *
 import numpy as np
 
+from sys import exit
 
 def getMinimumTickSize( currentPrice, tickSizeRange ):
   # Normally different markets have different minimum tick sizes.
