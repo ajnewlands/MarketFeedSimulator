@@ -5,19 +5,57 @@ import numpy as np
 from decimal import Decimal
 from Logger import log
 from random import random
+from sys import exit
+from collections import defaultdict
+
 from FeedMessages import *
 from SimulationDict import *
 from SimulationMarkets import Markets
 
-from sys import exit
 
-def getMinimumTickSize( currentPrice, tickSizeRange ):
+class MpvRanges( object ):
+  class Mpv( object ):
+    def __init__( self, price, tick ):
+      self.price = Decimal( price )
+      self.tick = Decimal( tick )
+    def __repr__( self ):
+      return "%s-%s" % ( self.price, self.tick )
+
+
+  def __init__( self, tickSizeDefinitionFile='MinimumTickSizes.dat' ):
+    self.MpvRanges = defaultdict( list )
+    mpvs = csv.DictReader( open( tickSizeDefinitionFile ) )
+
+    for r in mpvs:
+      rangeId = int( r['TickSizeRange'] )
+      price   = r['MinimumPrice']
+      tick    = r['TickSize']
+      self.MpvRanges[ rangeId ].append( self.Mpv( price, tick ) )
+    log( "Loaded %d MPV ranges" % ( len(self.MpvRanges) ), LogLevel.INFO )
+
+  def getMinimumTickSize( self, currentPrice, rangeId ):
+    range_list = self.MpvRanges[ rangeId ]
+    tick_size = Decimal( '0.01' )
+ 
+    for tick in range_list:
+      if currentPrice >= tick.price:
+        tick_size = tick.tick
+      else:
+        break
+    log( "Minimum tick size for %s %s is %s" % ( rangeId, currentPrice, tick_size ), LogLevel.DEBUG )
+    return tick_size
+ 
+  def print( self ):
+    print( self.MpvRanges )
+    
+
+#def getMinimumTickSize( currentPrice, tickSizeRange ):
   # Normally different markets have different minimum tick sizes.
   # Moreover, on many markets the tick size varies depending on the current price.
   # For now, we will assume 1 cent for all securities but the hook is here to improve this.
-  if (tickSizeRange == 2):
-    return Decimal('10')
-  return Decimal('0.01')
+#  if (tickSizeRange == 2):
+#    return Decimal('10')
+#  return Decimal('0.01')
 
 
 def positiveIntOrDefault( val, default ):
@@ -45,7 +83,7 @@ def getSecurityUniverse( securityMasterFilePath = 'SecurityMaster.dat' ):
   defaultValues = { 'bullishBias' : 0.50, 'quoteChangeProbability' : 0.5, 'tradeProbability' : 0.15,
     'initBid' : Decimal('10.00'), 'typicalTradeSize' : 1000, 'boardLotSize' : 1,
     'boardLotDistributionForTrades' : 100, 'typicalAggregateOrderSize' : 2500,
-    'boardLotDistributionForOrders' : 500 }
+    'boardLotDistributionForOrders' : 500, 'tickSizeRange': 1 }
 
   requiredHeaders = ['ticker', 'tickSizeRange', 'market', 'bullishBias', 'quoteChangeProbability',
     'tradeProbability', 'initBid', 'typicalTradeSize', 'boardLotSize', 'boardLotDistributionForTrades', 
@@ -55,7 +93,7 @@ def getSecurityUniverse( securityMasterFilePath = 'SecurityMaster.dat' ):
     args=[]
     for key in [ 'bullishBias', 'quoteChangeProbability', 'tradeProbability', 'initBid' ]:
       row[key] = positiveDecOrDefault( row[key], defaultValues[key] )
-    for key in [ 'typicalTradeSize', 'boardLotSize', 'boardLotDistributionForTrades',
+    for key in [ 'tickSizeRange', 'typicalTradeSize', 'boardLotSize', 'boardLotDistributionForTrades',
       'typicalAggregateOrderSize', 'boardLotDistributionForOrders' ]:
       row[key] = positiveIntOrDefault( row[key], defaultValues[key] )
     # convert MIC to Enum type
@@ -72,6 +110,7 @@ class Security( object ):
     return "%s: market:%s, bid: %s, ask: %s" % ( self.ticker, self.market, self.bid, self.ask )
 
   def __init__( self, ticker, tickSizeRange, market, bullishBias=0.50, quoteChangeProbability=0.50, tradeProbability=0.15, initBid=Decimal('10.00'), typicalTradeSize=1000, boardLotSize=1, boardLotDistributionForTrades=100, typicalAggregateOrderSize=2500, boardLotDistributionForOrders=500  ):
+    self.mpvRanges = MpvRanges()
     self.ticker=ticker
     self.tickSizeRange=tickSizeRange
     self.market=market
@@ -79,7 +118,7 @@ class Security( object ):
     self.quoteChangeProbability=quoteChangeProbability
     self.tradeProbability=tradeProbability
     self.bid = initBid
-    self.ask = initBid + getMinimumTickSize( initBid, tickSizeRange )
+    self.ask = initBid + self.mpvRanges.getMinimumTickSize( initBid, tickSizeRange )
     self.typicalTradeSize=typicalTradeSize
     self.typicalAggregateOrderSize=typicalAggregateOrderSize
     self.boardLotSize=boardLotSize
@@ -93,12 +132,12 @@ class Security( object ):
   def getNextQuoteLine( self, direction ):
     if ( direction == Direction.DOWN ):
       # Do not less prices fall below the minimum tick size
-      if ( self.bid > getMinimumTickSize( self.bid, self.tickSizeRange ) ):
-        self.bid = self.bid - getMinimumTickSize( self.bid, self.tickSizeRange ) 
-        self.ask = self.ask - getMinimumTickSize( self.ask, self.tickSizeRange ) 
+      if ( self.bid > self.mpvRanges.getMinimumTickSize( self.bid, self.tickSizeRange ) ):
+        self.bid = self.bid - self.mpvRanges.getMinimumTickSize( self.bid, self.tickSizeRange ) 
+        self.ask = self.ask - self.mpvRanges.getMinimumTickSize( self.ask, self.tickSizeRange ) 
     else:
-      self.bid = self.bid + getMinimumTickSize( self.bid, self.tickSizeRange ) 
-      self.ask = self.ask + getMinimumTickSize( self.ask, self.tickSizeRange ) 
+      self.bid = self.bid + self.mpvRanges.getMinimumTickSize( self.bid, self.tickSizeRange ) 
+      self.ask = self.ask + self.mpvRanges.getMinimumTickSize( self.ask, self.tickSizeRange ) 
     self.bidSize = self.getAggregateOrderSize()
     self.askSize = self.getAggregateOrderSize()
 
@@ -132,15 +171,15 @@ class Security( object ):
     if ( self.haltIndicator == HaltIndicator.NONE ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.HALTED
-        print( "Halted %s" % ( self.ticker ) )
+        log( "Halted %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
     elif ( self.haltIndicator == HaltIndicator.HALTED ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.INTRADAY_AUCTION
-        print( "Intraday Auction for %s" % ( self.ticker ) )
+        log( "Intraday Auction for %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
     elif ( self.haltIndicator == HaltIndicator.INTRADAY_AUCTION ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.NONE
-        print( "Normal trading for %s" % ( self.ticker ) )
+        log( "Normal trading for %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
 
   def getAuctionTrade( self, direction ):
     # TODO: auction prints should be much larger than regular trade prints.
@@ -148,7 +187,8 @@ class Security( object ):
 
   def getCurrentQuoteJson( self ):
     log( "quoting %s at $%s x %s / $%s x %s" % ( self.ticker, self.bid, self.bidSize, self.ask, self.askSize ), LogLevel.DEBUG )
-    return createJsonQuoteMessage( self.ticker, self.market.value.mic, str( self.bid ), self.bidSize, str( self.ask ), self.askSize ) 
+    #return createJsonQuoteMessage( self.ticker, self.market.value.mic, str( self.bid ), self.bidSize, str( self.ask ), self.askSize ) 
+    return createJsonQuoteMessage( self )
 
       
   def getTradeSize( self ):
@@ -159,7 +199,9 @@ class Security( object ):
 
   def getAggregateOrderSize( self ):
     boardLotsFromAOS = np.random.randint(-1 * self.boardLotDistributionForOrders, self.boardLotDistributionForOrders)
-    return self.typicalAggregateOrderSize + boardLotsFromAOS * self.boardLotSize
+    aggregateOrderSize = self.typicalAggregateOrderSize + boardLotsFromAOS * self.boardLotSize
+    if (aggregateOrderSize < 0 ): aggregateOrderSize = 0
+    return aggregateOrderSize
 
 def main():
   return getSecurityUniverse()

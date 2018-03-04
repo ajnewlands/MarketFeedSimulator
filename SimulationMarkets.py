@@ -3,7 +3,9 @@
 import csv
 from enum import Enum
 from random import random
+from Logger import log
 from SimulationMarketPhases import marketPhaseTransitions, MarketPhases, marketPhaseTransition
+from SimulationDict import LogLevel
 
 defaultMarketPhaseTransitions = {
   MarketPhases.CLOSED : marketPhaseTransition( 0.1, MarketPhases.PREOPEN ),
@@ -28,7 +30,7 @@ class Market( object ):
   def checkMarketPhase( self ):
     nextTransition=self.marketPhases[ self.currentPhase ]
     if( random() <= nextTransition.probability ):
-      print( "%s is now %s" % ( self.mic, nextTransition.nextPhase.value.description ) )
+      log( "%s is now %s" % ( self.mic, nextTransition.nextPhase.value.description ), LogLevel.INFO )
       self.currentPhase=nextTransition.nextPhase
 
 def loadMarketDefinitions( marketDefinitionFile = 'Markets.dat' ):

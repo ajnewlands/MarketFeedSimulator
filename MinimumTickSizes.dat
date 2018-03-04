@@ -1,0 +1,15 @@
+TickSizeRange,MinimumPrice,TickSize,Description
+1,0,0.001,ASX tick sizes
+1,0.2,0.005,ASX tick sizes
+1,2.0,0.01,ASX tick sizes
+2,0,0.1,Tokyo tick sizes
+2,1000,0.5,Tokyo tick sizes
+2,3000,1,Tokyo tick sizes
+2,10000,5,Tokyo tick sizes
+2,30000,10,Tokyo tick sizes
+2,100000,50,Tokyo tick sizes
+2,300000,100,Tokyo tick sizes
+2,1000000,500,Tokyo tick sizes
+2,3000000,1000,Tokyo tick sizes
+2,10000000,5000,Tokyo tick sizes
+2,30000000,10000,Tokyo tick sizes
