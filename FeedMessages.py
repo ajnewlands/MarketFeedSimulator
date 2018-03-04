@@ -9,6 +9,17 @@ class messageType( Enum ):
   trade='T'
   marketStatus='M'
 
+def createJsonTradeMessage( security ):
+  msg = {}
+  msg [ 't' ] = messageType.trade.value
+  msg[ 'sym' ] = security.ticker
+  msg[ 'ex' ] = security.market.value.mic
+  msg[ 'p' ] = str( security.lastPrice )
+  msg[ 's' ] = security.lastSize
+
+  return json.dumps( msg )
+  
+
 def createJsonMarketStatusMessage( market ):
   msg = {}
   msg[ 't' ] = messageType.marketStatus.value

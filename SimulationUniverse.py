@@ -110,6 +110,8 @@ class Security( object ):
     return "%s: market:%s, bid: %s, ask: %s" % ( self.ticker, self.market, self.bid, self.ask )
 
   def __init__( self, ticker, tickSizeRange, market, bullishBias=0.50, quoteChangeProbability=0.50, tradeProbability=0.15, initBid=Decimal('10.00'), typicalTradeSize=1000, boardLotSize=1, boardLotDistributionForTrades=100, typicalAggregateOrderSize=2500, boardLotDistributionForOrders=500  ):
+    self.lastPrice = 0
+    self.lastSize = 0
     self.mpvRanges = MpvRanges()
     self.ticker=ticker
     self.tickSizeRange=tickSizeRange
@@ -164,6 +166,8 @@ class Security( object ):
         # Reduce the available shares on this side of the book.
         self.askSize = self.askSize - tradeVolume
     log( "trading %s at $%s for %s shares" % ( self.ticker, tradePrice, tradeVolume), LogLevel.DEBUG )
+    self.lastPrice = tradePrice
+    self.lastSize = tradeVolume
     return ( tradeVolume, tradePrice, emptyOrderBookSide )
    
   def checkHaltIndicator( self ):
@@ -193,6 +197,10 @@ class Security( object ):
   def getCurrentQuoteJson( self ):
     log( "quoting %s at $%s x %s / $%s x %s" % ( self.ticker, self.bid, self.bidSize, self.ask, self.askSize ), LogLevel.DEBUG )
     return createJsonQuoteMessage( self )
+ 
+  def getCurrentTradeJson( self ):
+    log( "trading %s %s shs at $%s" % ( self.ticker, self.lastSize, self.lastPrice ), LogLevel.DEBUG )
+    return createJsonTradeMessage( self )
 
       
   def getTradeSize( self ):

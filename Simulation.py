@@ -53,8 +53,19 @@ class Simulation( Thread ):
         # Halted stocks won't get an auction print                                                          
         if ( auctionPrint and security.haltIndicator != HaltIndicator.HALTED ):                             
           tradeVolume, tradePrice, emptyOrderBookSide = security.getAuctionTrade( direction )               
+          self.message_publisher.sendMessage( 
+            "%s.%s" % ( 'Equity', security.market.value.mic ),
+            security.getCurrentTradeJson()
+          )
+          # TODO - post auction cross trade.
         if ( tradingAllowed and random() <= security.tradeProbability ):                                    
           tradeVolume, tradePrice, emptyOrderBookSide = security.getNextExecutedTrade( direction )          
+          # TODO - post trade
+          self.message_publisher.sendMessage( 
+            "%s.%s" % ( 'Equity', security.market.value.mic ),
+            security.getCurrentTradeJson()
+          )
+          # post change in quoteline from trade (reduced total order size)
           if not emptyOrderBookSide:                                                                        
             self.message_publisher.sendMessage( 
               "%s.%s" % ( 'Equity', security.market.value.mic ),
