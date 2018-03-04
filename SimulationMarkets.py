@@ -6,6 +6,7 @@ from random import random
 from Logger import log
 from SimulationMarketPhases import marketPhaseTransitions, MarketPhases, marketPhaseTransition
 from SimulationDict import LogLevel
+from FeedMessages import createJsonMarketStatusMessage
 
 defaultMarketPhaseTransitions = {
   MarketPhases.CLOSED : marketPhaseTransition( 0.1, MarketPhases.PREOPEN ),
@@ -28,10 +29,16 @@ class Market( object ):
     return "%s, %s, %s" % ( self.name, self.mic, self.country )
 
   def checkMarketPhase( self ):
+    changed=False
     nextTransition=self.marketPhases[ self.currentPhase ]
     if( random() <= nextTransition.probability ):
+      changed=True
       log( "%s is now %s" % ( self.mic, nextTransition.nextPhase.value.description ), LogLevel.INFO )
       self.currentPhase=nextTransition.nextPhase
+    return changed 
+ 
+  def getCurrentMarketPhaseMessage( self ):
+    return createJsonMarketStatusMessage( self )
 
 def loadMarketDefinitions( marketDefinitionFile = 'Markets.dat' ):
   markets = {}

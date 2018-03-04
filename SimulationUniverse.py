@@ -167,19 +167,24 @@ class Security( object ):
     return ( tradeVolume, tradePrice, emptyOrderBookSide )
    
   def checkHaltIndicator( self ):
+    change=False
     # Manage security halt / IA / normal states.
     if ( self.haltIndicator == HaltIndicator.NONE ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.HALTED
         log( "Halted %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
+        change=True
     elif ( self.haltIndicator == HaltIndicator.HALTED ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.INTRADAY_AUCTION
         log( "Intraday Auction for %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
+        change=True
     elif ( self.haltIndicator == HaltIndicator.INTRADAY_AUCTION ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.NONE
         log( "Normal trading for %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
+        change=True
+    return change
 
   def getAuctionTrade( self, direction ):
     # TODO: auction prints should be much larger than regular trade prints.
@@ -187,7 +192,6 @@ class Security( object ):
 
   def getCurrentQuoteJson( self ):
     log( "quoting %s at $%s x %s / $%s x %s" % ( self.ticker, self.bid, self.bidSize, self.ask, self.askSize ), LogLevel.DEBUG )
-    #return createJsonQuoteMessage( self.ticker, self.market.value.mic, str( self.bid ), self.bidSize, str( self.ask ), self.askSize ) 
     return createJsonQuoteMessage( self )
 
       

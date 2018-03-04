@@ -9,6 +9,14 @@ class messageType( Enum ):
   trade='T'
   marketStatus='M'
 
+def createJsonMarketStatusMessage( market ):
+  msg = {}
+  msg[ 't' ] = messageType.marketStatus.value
+  msg[ 'ex' ] = market.mic
+  msg[ 'st' ] = market.currentPhase.name
+  
+  return json.dumps( msg )
+
 #def createJsonQuoteMessage( ticker, exchange, bid, bidsz, ask, asksz, qcond=1 ):
 def createJsonQuoteMessage( security, qcond=1 ):
   msg = {}

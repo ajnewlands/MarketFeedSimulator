@@ -20,12 +20,22 @@ class Simulation( Thread ):
 
   def run( self ):
     while( self.runnable ):
-      for market in Markets:                                                                                                      
-        market.value.checkMarketPhase()                                                                                           
-      for security in self.securityUniverse.values():                                                                                  
+      for market in Markets:
+        if( market.value.checkMarketPhase() ):
+          self.message_publisher.sendMessage( 
+            "%s.%s" % ( 'Equity', market.value.mic ),
+            market.value.getCurrentMarketPhaseMessage()
+          )
+          
+      for security in self.securityUniverse.values():
         # Check whether this security has moved in/out of a halted state                                                          
         if ( security.market.value.currentPhase == MarketPhases.OPEN ):                                                           
-          security.checkHaltIndicator()                                                                                           
+          if( security.checkHaltIndicator() ):
+            # Change in intraday auction or halt status
+            self.message_publisher.sendMessage( 
+              "%s.%s" % ( 'Equity', security.market.value.mic ),
+              security.getCurrentQuoteJson()
+            )
                                                                                                                                 
         # bullish bias dictates the probability of crossing the bid/ask spread in either direction.                               
         # bullish bias also dictates the likely direction of any quote change                                                     
