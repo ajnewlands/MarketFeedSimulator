@@ -53,6 +53,8 @@ class Main( object ):
   def onExit( self, signum=None, frame=None ):
     log( "Shutting down simulation", LogLevel.INFO )
     self.simulation.stop()
+    self.simulation.join()
+    log( "Simulation ended", LogLevel.INFO )
     log( "Shutting down message bus connection", LogLevel.INFO )
     self.message_publisher.shutdown()
   
@@ -81,9 +83,7 @@ class Main( object ):
   
     log( "Simulation starting", LogLevel.INFO )
     self.simulation.start()
- 
-    self.simulation.join()
-    log( "Simulation ended", LogLevel.INFO )
+     
 
 if __name__ == "__main__":
   m = Main()
