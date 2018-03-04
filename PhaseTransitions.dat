@@ -1,0 +1,13 @@
+TransitionName,CurrentPhase,NextPhase,Probability
+AsxMarketPhases,CLOSED,PREOPEN,0.1
+AsxMarketPhases,PREOPEN,OAPRINT,0.1
+AsxMarketPhases,OAPRINT,OPEN,1.0
+AsxMarketPhases,OPEN,PRECLOSE,0.01
+AsxMarketPhases,PRECLOSE,CAPRINT,0.1
+AsxMarketPhases,CAPRINT,CLOSED,1.0
+HkseMarketPhases,CLOSED,PREOPEN,0.1
+HkseMarketPhases,PREOPEN,OAPRINT,0.1
+HkseMarketPhases,OAPRINT,OPEN,1.0
+HkseMarketPhases,OPEN,PRECLOSE,0.01
+HkseMarketPhases,PRECLOSE,CAPRINT,0.1
+HkseMarketPhases,CAPRINT,CLOSED,1.0
