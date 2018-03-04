@@ -1,12 +1,13 @@
 #!/usr/bin/python
 
 import csv
-from decimal import Decimal
-from SimulationDict import *
-from Markets import *
-from Logger import log
-from FeedMessages import *
 import numpy as np
+from decimal import Decimal
+from Logger import log
+from random import random
+from FeedMessages import *
+from SimulationDict import *
+from SimulationMarkets import Markets
 
 from sys import exit
 

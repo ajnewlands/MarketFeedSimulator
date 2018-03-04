@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
 from threading import Thread
-from Markets import *
 from time import sleep
+from random import random
 from SimulationDict import *
+from SimulationMarkets import Markets, MarketPhases
 
 class Simulation( Thread ):
   eventFrequencyMs = 10
