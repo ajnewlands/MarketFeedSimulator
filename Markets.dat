@@ -1,4 +1,4 @@
 ExchangeId,Description,Country,PhaseTransitions
 XASX,The Australian Securities Exchange,Australia,AsxMarketPhases
-XTKS,The Tokyo Stock Exchange,Japan,AsxMarketPhases
+XTKS,The Tokyo Stock Exchange,Japan,TokyoMarketPhases
 HKSE,The Hong Kong Stock Exchange,Hong Kong,HkseMarketPhases

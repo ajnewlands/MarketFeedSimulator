@@ -4,6 +4,13 @@ from enum import Enum
 from SimulationDict import HaltIndicator
 import json
 
+class tradeCondition( Enum ):
+  REGULAR='R'
+  AUCTION='X' 
+
+class quoteCondition( Enum ):
+  NORMAL='N'
+
 class messageType( Enum ):
   quote='Q'
   trade='T'
@@ -16,6 +23,7 @@ def createJsonTradeMessage( security ):
   msg[ 'ex' ] = security.market.value.mic
   msg[ 'p' ] = str( security.lastPrice )
   msg[ 's' ] = security.lastSize
+  msg[ 'tc' ] = security.lastTradeCondition
 
   return json.dumps( msg )
   
@@ -29,7 +37,7 @@ def createJsonMarketStatusMessage( market ):
   return json.dumps( msg )
 
 #def createJsonQuoteMessage( ticker, exchange, bid, bidsz, ask, asksz, qcond=1 ):
-def createJsonQuoteMessage( security, qcond=1 ):
+def createJsonQuoteMessage( security ):
   msg = {}
   if (security.haltIndicator == HaltIndicator.HALTED ): 
     hi = 1
@@ -50,7 +58,8 @@ def createJsonQuoteMessage( security, qcond=1 ):
   msg[ 'as' ] = security.askSize
   msg[ 'hi'] = hi 
   msg[ 'ia' ] = ia
-  msg[ 'qc' ] = qcond
+  msg[ 'bc' ] = security.bidCond
+  msg[ 'ac' ] = security.askCond
 
   return json.dumps( msg )
 

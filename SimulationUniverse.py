@@ -112,6 +112,7 @@ class Security( object ):
   def __init__( self, ticker, tickSizeRange, market, bullishBias=0.50, quoteChangeProbability=0.50, tradeProbability=0.15, initBid=Decimal('10.00'), typicalTradeSize=1000, boardLotSize=1, boardLotDistributionForTrades=100, typicalAggregateOrderSize=2500, boardLotDistributionForOrders=500  ):
     self.lastPrice = 0
     self.lastSize = 0
+    self.lastTradeCondition = ''
     self.mpvRanges = MpvRanges()
     self.ticker=ticker
     self.tickSizeRange=tickSizeRange
@@ -128,6 +129,8 @@ class Security( object ):
     self.boardLotDistributionForOrders=boardLotDistributionForOrders
     self.bidSize = self.getAggregateOrderSize()
     self.askSize = self.getAggregateOrderSize()
+    self.bidCond = quoteCondition.NORMAL.value
+    self.askCond = quoteCondition.NORMAL.value
     self.haltIndicator=HaltIndicator.NONE
 
   # Generate a new starting quote line, having moved one tick in the appropriate direction
@@ -146,7 +149,7 @@ class Security( object ):
   # Generate the next trade - decrement the appropriate sharecount if possible.
   # If this calls for more shares than are available, generate a new quote line,
   # moving in the same direction as the spread was crossed.
-  def getNextExecutedTrade( self, direction ):
+  def getNextExecutedTrade( self, direction, tcond=tradeCondition.REGULAR.value ):
     emptyOrderBookSide = False
     tradeVolume = self.getTradeSize()
     if (direction == Direction.DOWN):
@@ -168,6 +171,7 @@ class Security( object ):
     log( "trading %s at $%s for %s shares" % ( self.ticker, tradePrice, tradeVolume), LogLevel.DEBUG )
     self.lastPrice = tradePrice
     self.lastSize = tradeVolume
+    self.lastTradeCondition = tcond
     return ( tradeVolume, tradePrice, emptyOrderBookSide )
    
   def checkHaltIndicator( self ):
@@ -176,23 +180,23 @@ class Security( object ):
     if ( self.haltIndicator == HaltIndicator.NONE ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.HALTED
-        log( "Halted %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
+        log( "Halted %s:%s" % ( self.market.name, self.ticker ), LogLevel.INFO )
         change=True
     elif ( self.haltIndicator == HaltIndicator.HALTED ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.INTRADAY_AUCTION
-        log( "Intraday Auction for %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
+        log( "Intraday Auction for %s:%s" % ( self.market.name, self.ticker ), LogLevel.INFO )
         change=True
     elif ( self.haltIndicator == HaltIndicator.INTRADAY_AUCTION ):
       if ( random() <= self.haltIndicator.value.probability ):
         self.haltIndicator = HaltIndicator.NONE
-        log( "Normal trading for %s:%s" % ( self.market, self.ticker ), LogLevel.INFO )
+        log( "Normal trading for %s:%s" % ( self.market.name, self.ticker ), LogLevel.INFO )
         change=True
     return change
 
   def getAuctionTrade( self, direction ):
     # TODO: auction prints should be much larger than regular trade prints.
-    return self.getNextExecutedTrade( direction )
+    return self.getNextExecutedTrade( direction, tcond=tradeCondition.AUCTION.value )
 
   def getCurrentQuoteJson( self ):
     log( "quoting %s at $%s x %s / $%s x %s" % ( self.ticker, self.bid, self.bidSize, self.ask, self.askSize ), LogLevel.DEBUG )

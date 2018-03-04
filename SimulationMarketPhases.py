@@ -16,9 +16,14 @@ class MarketPhases( Enum ):
   CLOSED = MarketPhase( 'Closed' )
   PREOPEN = MarketPhase( 'Pre-Open', quotingAllowed=True )
   OPEN = MarketPhase( 'Continuous Trading', quotingAllowed=True, tradingAllowed=True )
+  OPENMORNING = MarketPhase( 'Morning Continuous Trading', quotingAllowed=True, tradingAllowed=True )
+  OPENAFTERNOON = MarketPhase( 'Afternoon Continuous Trading', quotingAllowed=True, tradingAllowed=True )
   PRECLOSE = MarketPhase( 'Pre-Close', quotingAllowed=True )
   OAPRINT = MarketPhase( 'Opening Auction', auctionPrint=True )
   CAPRINT = MarketPhase( 'Closing Auction', auctionPrint=True )
+  NOONPREOPEN = MarketPhase( 'Noon Pre-Open', quotingAllowed=True )
+  BREAK = MarketPhase( 'Mid Day Break' )
+  NOONPRECLOSE = MarketPhase( 'Pre-Close', quotingAllowed=True )
 
 
 class marketPhaseTransition( object ):
