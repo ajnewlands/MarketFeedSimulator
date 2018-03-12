@@ -9,7 +9,9 @@ from Simulation import Simulation
 from SimulationDict import LogLevel
 from SimulationPublisher import messagePublisher
 from SimulationUniverse import getSecurityUniverse
+from SimulationRpc import RpcConsumer
 from Logger import log
+
 
 seed( None )
 
@@ -56,10 +58,12 @@ class Main( object ):
     self.simulation.join()
     log( "Simulation ended", LogLevel.INFO )
     log( "Shutting down message bus connection", LogLevel.INFO )
+    self.rpc_consumer.onExit()
     self.message_publisher.shutdown()
   
   def __init__( self ):
     pass
+
  
   def main( self ):
     configurationFile='MarketFeedSimulator.cfg'
@@ -83,6 +87,11 @@ class Main( object ):
   
     log( "Simulation starting", LogLevel.INFO )
     self.simulation.start()
+    self.rpc_consumer = RpcConsumer( cfg,
+      stop_callback=self.onExit,
+      change_freq_callback=self.simulation.changeFrequency
+    );
+    self.rpc_consumer.consume()
      
 
 if __name__ == "__main__":

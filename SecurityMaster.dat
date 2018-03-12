@@ -3,4 +3,4 @@ ticker,tickSizeRange,market,bullishBias,quoteChangeProbability,tradeProbability,
 BHP,1,XASX,-1,-1,-1,30.68,-1,-1,-1,-1,-1
 WOW,1,XASX,-1,-1,-1,26.92,-1,-1,-1,-1,-1
 CBA,1,XASX,-1,-1,-1,75.46,-1,-1,-1,-1,-1
-AMP,1,XASX,-1,-1,-1,5.25,500,250,-1,4000,4
+AMP,1,XASX,-1,-1,-1,5.25,5000,6,-1,4000,4

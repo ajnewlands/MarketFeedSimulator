@@ -12,6 +12,9 @@ class Simulation( Thread ):
  
   def stop( self ):
     self.runnable = False
+
+  def changeFrequency( self, freq ):
+    self.eventFrequencyMs = int( freq )
  
   def __init__( self, securityUniverse, message_publisher ):
     Thread.__init__( self )
